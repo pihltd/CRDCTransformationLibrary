@@ -20,6 +20,8 @@ def getKeyProperty(node, mdf=None, mdffiles=None):
     elif mdffiles is not None:
         mdf = bento_mdf.MDF(*mdffiles)
         proplist = mdf.model.nodes[node].props
+    else:
+        return 'Forgot to provide either a model or MDF files'
     if proplist is not None:
         for prop in proplist:
             if mdf.model.props[(node,prop)].get_attr_dict()['is_key'] == 'True':

@@ -118,7 +118,7 @@ def cypherGetBasicNodeQuery(node):
 
     return f"MATCH ({node.lower()}:{node.upper()}) RETURN {node.lower()}"
 
-def cypherElementIDQuery(node, elementid):
+def cypherElementIDQuery(elementid):
     '''Returns a query that uses the node and elementId to find a specific node
     :param node: The name of the node to query
     :type node: string
@@ -127,7 +127,7 @@ def cypherElementIDQuery(node, elementid):
     :return: The query needed to get all instances of the node with the provided elementId
     :rtype: string
     '''
-    return f"MATCH ({node.lower()}:{node.upper()}) WHERE elementId({node.lower()}) = ""{elementid}"" RETURN {node.lower()}" 
+    return f"MATCH (s) WHERE elementId(s) = '{elementid}' RETURN s" 
 
 def cypherRecordCount(node):
     '''Returns a query for the number of  records for the provided node
@@ -137,6 +137,20 @@ def cypherRecordCount(node):
     :rtype: string'''
 
     return f"MATCH ({node.lower()}:{node.upper()}) RETURN COUNT(*) as count"
+
+
+def cypherSingleWhereQuery(node, field, value):
+    '''Returns a where with a single WHERE clause on the provided field and value
+    :param node: The name of the node containing the field
+    :type node: string
+    :param field: The name of the field in the node to be queried
+    :type field: string
+    :param value: The value of the field to query for
+    :type value: string
+    :return: The query that will get the provided node for the field and value
+    :rtype: string'''
+
+    return f"MATCH ({node.lower()}:{node.upper()} WHERE {node.lower()}['{field.lower()}'] = '{value}') RETURN {node.lower()}"
     
 
 
