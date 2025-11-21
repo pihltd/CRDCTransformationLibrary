@@ -85,6 +85,7 @@ def cypherOfTransformRelationshipsQuery(srcnodelabel, dstnodelable, edgelabel, s
 
 def cypherUniqueLabels(dbconn, db='neo4j'):
     '''Returns a list of the labels/nodes found in the database
+
     :param dbconn: A database connection object
     :type dbconn: Neo4jConnection object
     :param db: The database to query.  Default is neo4j
@@ -101,6 +102,7 @@ def cypherUniqueLabels(dbconn, db='neo4j'):
 
 def cypherGetNodeQuery(node):
     '''Returns a query to get all instances of the node plus the elementIds in elid
+
     :param node: The name of the node to query
     :type node: string
     :return: The query needed to get all instances of the node
@@ -120,6 +122,7 @@ def cypherGetBasicNodeQuery(node):
 
 def cypherElementIDQuery(elementid):
     '''Returns a query that uses the node and elementId to find a specific node
+
     :param node: The name of the node to query
     :type node: string
     :param elementid: The database elementId to query
@@ -131,6 +134,7 @@ def cypherElementIDQuery(elementid):
 
 def cypherRecordCount(node):
     '''Returns a query for the number of  records for the provided node
+
     :param node: The name of the node to query
     :type node: string
     :return: The query needed to get all instances of the node
@@ -141,6 +145,7 @@ def cypherRecordCount(node):
 
 def cypherSingleWhereQuery(node, field, value):
     '''Returns a where with a single WHERE clause on the provided field and value
+    
     :param node: The name of the node containing the field
     :type node: string
     :param field: The name of the field in the node to be queried
