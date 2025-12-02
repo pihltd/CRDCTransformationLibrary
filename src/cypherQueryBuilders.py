@@ -1,6 +1,6 @@
 import os
 
-def cypherLoadCSVQuery(nodelabel, filename, separator='tab', proplist = [], keyprop=None):
+def cypherLoadCSVQuery(nodelabel, filename, separator='tab', proplist = [], keyprop=None, nodeprefix=None):
     '''Creates a cypher query that will load data from a csv file
 
     :param nodelabel: The label for the nodes that will be created for the data in the csv file
@@ -22,9 +22,13 @@ def cypherLoadCSVQuery(nodelabel, filename, separator='tab', proplist = [], keyp
         startstring = f"LOAD CSV WITH HEADERS FROM 'file:///{os.path.basename(filename)}' AS row"
         if separator == 'tab':
             startstring = startstring+" FIELDTERMINATOR '\t'"
-        mergestring = f" MERGE ({nodelabel.lower()}:{nodelabel.upper()} {{{keyprop}:row.{keyprop}}})"
+        if nodeprefix is not None:
+            mergestring = f" MERGE ({nodelabel.lower()}:{nodeprefix}_{nodelabel.upper()} {{{keyprop}:row.{keyprop}}})"
+        else:
+            mergestring = f" MERGE ({nodelabel.lower()}:{nodelabel.upper()} {{{keyprop}:row.{keyprop}}})"
         returnstring = startstring+mergestring
-        proplist.remove(keyprop)
+        if keyprop in proplist:
+            proplist.remove(keyprop)
         oncreatestring = " ON CREATE SET "
         proparray = []
         for prop in proplist:
@@ -37,7 +41,7 @@ def cypherLoadCSVQuery(nodelabel, filename, separator='tab', proplist = [], keyp
 
 
 
-def cypherRelationshipQuery(srcnodelabel, dstnodelabel, edgelabel, keyproperty):
+def cypherRelationshipQuery(srcnodelabel, dstnodelabel, edgelabel, keyproperty, modellabel=None):
     '''Creates a cypher query that creates an edge/relationsihp between a source node and a destination node
 
     :param srcnodelabel: The label for the existing source node

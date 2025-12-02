@@ -41,7 +41,7 @@ def gcGeneralLineNode(gcnode, to_df, transform_df, conn, dbnodelist, studyid = N
         #
         # Node specific loadings happen here
         #
-        if gcnode in ['sample', 'diagnosis' ]:
+        if gcnode == 'sample':
             loadline['participant.study_participant_id'] =f"{studyid}_{ first_result[gcnode]['participant.participant_id']}"
         elif gcnode == 'participant':
             loadline['study_participant_id'] =f"{studyid}_{first_result[gcnode]['participant_id']}"
@@ -49,6 +49,9 @@ def gcGeneralLineNode(gcnode, to_df, transform_df, conn, dbnodelist, studyid = N
             loadline['study.study_id'] = studyid
             participantid = sample2Participant(first_result[gcnode]['sample.sample_id'], conn)
             loadline['participant.study_participant_id'] =f"{studyid}_{participantid}"
+        elif gcnode == 'diagnosis':
+            loadline['participant.study_participant_id'] =f"{studyid}_{ first_result[gcnode]['participant.participant_id']}"
+            loadline['study_diagnosis_id'] = f"{studyid}_{first_result[gcnode]['diagnosis_id']}"
         #
         # Secondary node loop.  I'm still not sure this is the right way to do it.
         #
@@ -59,7 +62,7 @@ def gcGeneralLineNode(gcnode, to_df, transform_df, conn, dbnodelist, studyid = N
                 for secondary_result in secondary_results:
                     from_properties = list(secondary_result[secondary_node].keys())
                     loadline = loadProps(from_properties, transform_df, loadline, secondary_result, secondary_node)
-                    elids.append({secondary_node: secondary_result['elid']})
+                    elids.append(str({secondary_node: secondary_result['elid']}))
         loadline['parent_elementId'] = elids
         to_df.loc[len(to_df)] = loadline
     return to_df
