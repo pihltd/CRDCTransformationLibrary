@@ -62,7 +62,7 @@ def gcGeneralLineNode(gcnode, to_df, transform_df, conn, dbnodelist, studyid = N
                 for secondary_result in secondary_results:
                     from_properties = list(secondary_result[secondary_node].keys())
                     loadline = loadProps(from_properties, transform_df, loadline, secondary_result, secondary_node)
-                    elids.append(str({secondary_node: secondary_result['elid']}))
+                    elids.append({secondary_node: secondary_result['elid']})
         loadline['parent_elementId'] = elids
         to_df.loc[len(to_df)] = loadline
     return to_df

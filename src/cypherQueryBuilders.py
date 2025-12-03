@@ -55,16 +55,26 @@ def cypherRelationshipQuery(srcnodelabel, dstnodelabel, edgelabel, keyproperty, 
     :rtype: string    
     '''
 
-    edgequery = f"MATCH ({srcnodelabel.lower()}:{srcnodelabel.upper()}), ({dstnodelabel.lower()}:{dstnodelabel.upper()})"
-    wherestring = f" WHERE {srcnodelabel.lower()}.`{dstnodelabel.lower()}.{keyproperty.lower()}` = {dstnodelabel.lower()}.{keyproperty.lower()}"
+    if modellabel is not None:
+        edgequery = f"MATCH ({srcnodelabel.lower()}:{srcnodelabel.upper()}), ({modellabel.lower()}_{dstnodelabel.lower()}:{modellabel.upper()}{dstnodelabel.upper()})"
+    else:
+        edgequery = f"MATCH ({srcnodelabel.lower()}:{srcnodelabel.upper()}), ({dstnodelabel.lower()}:{dstnodelabel.upper()})"
+    #dstnodelabel is the problem
+    if modellabel is not None:
+        wherestring = f" WHERE {srcnodelabel.lower()}.`{dstnodelabel.lower()}.{keyproperty.lower()}` = {modellabel.lower()}_{dstnodelabel.lower()}.{keyproperty.lower()}"
+    else:
+        wherestring = f" WHERE {srcnodelabel.lower()}.`{dstnodelabel.lower()}.{keyproperty.lower()}` = {dstnodelabel.lower()}.{keyproperty.lower()}"
     edgequery = edgequery+wherestring
-    createstring = f" CREATE ({srcnodelabel.lower()})-[:{edgelabel}]->({dstnodelabel.lower()})"
+    if modellabel is not None:
+        createstring = f" CREATE ({srcnodelabel.lower()})-[:{edgelabel}]->({modellabel.lower()}_{dstnodelabel.lower()})"
+    else:
+        createstring = f" CREATE ({srcnodelabel.lower()})-[:{edgelabel}]->({dstnodelabel.lower()})"
     edgequery = edgequery+createstring
     return edgequery
 
 
 
-def cypherOfTransformRelationshipsQuery(srcnodelabel, dstnodelable, edgelabel, srckeyprop):
+def cypherOfTransformRelationshipsQuery(srcnodelabel, dstnodelabel, edgelabel, srckeyprop):
     '''Creates a cypher query that adds a relationships between two nodes based on the node elementID.  This requires the source node to have a record of the destination node elementId.
     
     :param srcnodelabel: The label for the existing source node
@@ -79,11 +89,20 @@ def cypherOfTransformRelationshipsQuery(srcnodelabel, dstnodelable, edgelabel, s
     :rtype: string
     '''
 
-    edgequery = f"MATCH ({srcnodelabel.lower()}:{srcnodelabel.upper()}), ({dstnodelable.lower()}:{dstnodelable.upper()})"
-    wherestring = f" WHERE elementid({srcnodelabel.lower()}) = {dstnodelable.lower()}.{srckeyprop}"
+    edgequery = f"MATCH ({srcnodelabel.lower()}:{srcnodelabel.upper()}), ({dstnodelabel.lower()}:{dstnodelabel.upper()})"
+    wherestring = f" WHERE elementid({srcnodelabel.lower()}) = {dstnodelabel.lower()}.{srckeyprop}"
     edgequery = edgequery+wherestring
-    createstring = f" CREATE ({srcnodelabel.lower()})-[:{edgelabel}]->({dstnodelable.lower()})"
+    createstring = f" CREATE ({srcnodelabel.lower()})-[:{edgelabel}]->({dstnodelabel.lower()})"
     edgequery = edgequery+createstring
+    return edgequery
+
+
+def cypherElementIDRelationshipQuery(parentlabel, childlabel, edgelabel, parentelementid, childemelentid):
+
+    edgequery = f"MATCH ({parentlabel.lower()}:{parentlabel.upper()}), ({childlabel.lower()}:{childlabel.upper()})"
+    wherestring = f" WHERE elementid({parentlabel.lower()}) = '{parentelementid}' AND elementid({childlabel.lower()}) = '{childemelentid}'"
+    createstring = f" CREATE ({parentlabel.lower()})-[:{edgelabel}]->({childlabel.lower()})"
+    edgequery = edgequery+wherestring+createstring
     return edgequery
 
 
@@ -115,7 +134,7 @@ def cypherGetNodeQuery(node):
     return f"MATCH ({node.lower()}:{node.upper()}) WITH *, elementID({node.lower()}) AS elid RETURN {node.lower()},elid"
 
 def cypherGetBasicNodeQuery(node):
-    '''Similar to cypherGetNodeQuery, this one queryies just on the lable, elementID is not included
+    '''Similar to cypherGetNodeQuery, this one queryies just on the label, elementID is not included
 
     :param node: The name of the node to query
     :type node: string
