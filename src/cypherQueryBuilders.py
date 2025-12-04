@@ -1,7 +1,7 @@
 import os
 
 def cypherLoadCSVQuery(nodelabel, filename, separator='tab', proplist = [], keyprop=None, nodeprefix=None):
-    '''Creates a cypher query that will load data from a csv file
+    '''Creates a cypher query that will load data from a csv file.  Note that this uses CREATE, not MERGE, so take care to not overwrite existing nodes.
 
     :param nodelabel: The label for the nodes that will be created for the data in the csv file
     :type nodelabel: string
@@ -23,25 +23,74 @@ def cypherLoadCSVQuery(nodelabel, filename, separator='tab', proplist = [], keyp
         if separator == 'tab':
             startstring = startstring+" FIELDTERMINATOR '\t'"
         if nodeprefix is not None:
-            mergestring = f" MERGE ({nodelabel.lower()}:{nodeprefix}_{nodelabel.upper()} {{{keyprop}:row.{keyprop}}})"
+            mergestring = f" CREATE ({nodelabel.lower()}:{nodeprefix}_{nodelabel.upper()} {{{keyprop}:row.{keyprop}}})"
         else:
-            mergestring = f" MERGE ({nodelabel.lower()}:{nodelabel.upper()} {{{keyprop}:row.{keyprop}}})"
+            mergestring = f" CREATE ({nodelabel.lower()}:{nodelabel.upper()} {{{keyprop}:row.{keyprop}}})"
         returnstring = startstring+mergestring
         if keyprop in proplist:
             proplist.remove(keyprop)
-        oncreatestring = " ON CREATE SET "
+        propstring = " SET "
         proparray = []
         for prop in proplist:
             if "." in prop:
                 prop = f"`{prop}`"
             proparray.append(f"{nodelabel.lower()}.{prop} = row.{prop}")
-        returnstring = returnstring+oncreatestring+",".join(proparray)
+        returnstring = returnstring+propstring+",".join(proparray)
     return returnstring
 
 
 
 
-def cypherRelationshipQuery(srcnodelabel, dstnodelabel, edgelabel, keyproperty, modellabel=None):
+def cypherModelRelationshipQuery(srcnodelabel, dstnodelabel, edgelabel, keyproperty, modelhandle, modelversion):
+    '''Creates a cypher query to establish relationships between source and destination nodes in a specified model and version
+    
+    :param srcnodelabel: The label for the existing source node
+    :type srcnodelabel: string
+    :param dstnodelabel: The label for the existing destination node
+    :type dstnodelable: string
+    :param edgelabel: The label to apply to newly created relationships/edges
+    :type edgelable: string
+    :param keyproperty: The property to match to create the edge
+    :param modelname: The name of the data model (mdf.handle)
+    :type modelname: string
+    :param modelversion: The version of the data model (mdf.version)
+    :type modelversion: string
+    :return: A completed cypher query creating an edge
+    :rtype: string'''
+
+    edgequery = f"MATCH ({srcnodelabel.lower()}:{srcnodelabel.upper()}), ({dstnodelabel.lower()}:{dstnodelabel.upper()})"
+    wherestring = f" WHERE {srcnodelabel.lower()}.`{dstnodelabel.lower()}.{keyproperty.lower()}` = {dstnodelabel.lower()}.{keyproperty.lower()}"
+    modelstring = f" AND {srcnodelabel.lower()}.modelhandle = '{modelhandle}'"
+    versionstring = f" AND {srcnodelabel.lower()}.modelversion = '{modelversion}'"
+    createstring = f" CREATE ({srcnodelabel.lower()})-[{edgelabel.lower()}:{edgelabel.upper()}]->({dstnodelabel.lower()})"
+    setstring = f" SET {edgelabel}.modelhandle = '{modelhandle}', {edgelabel}.modelversion = '{modelversion}'"
+    return edgequery+wherestring+modelstring+versionstring+createstring+setstring
+
+
+
+def cypherDeleteFileDuplicateEdgesQuery(node, property1, property2, modelhandle, modelversion):
+    '''The CDS model has an oddity that causes a node to build a relationship with itself
+    :param node:  The node that has the self reference
+    :type node: string
+    "param property1: One of the properties used to create the self reference
+    :type property1: string
+    :param property2: A secon property used in the self-reference
+    :type property2: string
+    :param modelhandle: The handle of the data model
+    :type modelhandle: string
+    :param modelversion: The version of the data model
+    :type modelversion: string
+    :return: A completed cypher query deleting the self-referencing edges
+    "rtype: string'''
+
+    matchquery = f"MATCH ({node.lower()}:{node.upper()})-[r]-({node.lower()}:{node.upper()})"
+    wherequery = f" WHERE {node.lower()}.`{property1.lower()}` = {node.lower()}.{property2.lower()}"
+    andquery = f" AND {node.lower()}.modelhandle = '{modelhandle}' AND {node.lower()}.modelversion = '{modelversion}' DELETE r"
+    return matchquery+wherequery+andquery
+
+
+
+def cypherRelationshipQuery(srcnodelabel, dstnodelabel, edgelabel, keyproperty):
     '''Creates a cypher query that creates an edge/relationsihp between a source node and a destination node
 
     :param srcnodelabel: The label for the existing source node
@@ -55,22 +104,10 @@ def cypherRelationshipQuery(srcnodelabel, dstnodelabel, edgelabel, keyproperty, 
     :rtype: string    
     '''
 
-    if modellabel is not None:
-        edgequery = f"MATCH ({srcnodelabel.lower()}:{srcnodelabel.upper()}), ({modellabel.lower()}_{dstnodelabel.lower()}:{modellabel.upper()}{dstnodelabel.upper()})"
-    else:
-        edgequery = f"MATCH ({srcnodelabel.lower()}:{srcnodelabel.upper()}), ({dstnodelabel.lower()}:{dstnodelabel.upper()})"
-    #dstnodelabel is the problem
-    if modellabel is not None:
-        wherestring = f" WHERE {srcnodelabel.lower()}.`{dstnodelabel.lower()}.{keyproperty.lower()}` = {modellabel.lower()}_{dstnodelabel.lower()}.{keyproperty.lower()}"
-    else:
-        wherestring = f" WHERE {srcnodelabel.lower()}.`{dstnodelabel.lower()}.{keyproperty.lower()}` = {dstnodelabel.lower()}.{keyproperty.lower()}"
-    edgequery = edgequery+wherestring
-    if modellabel is not None:
-        createstring = f" CREATE ({srcnodelabel.lower()})-[:{edgelabel}]->({modellabel.lower()}_{dstnodelabel.lower()})"
-    else:
-        createstring = f" CREATE ({srcnodelabel.lower()})-[:{edgelabel}]->({dstnodelabel.lower()})"
-    edgequery = edgequery+createstring
-    return edgequery
+    edgequery = f"MATCH ({srcnodelabel.lower()}:{srcnodelabel.upper()}), ({dstnodelabel.lower()}:{dstnodelabel.upper()})"
+    wherestring = f" WHERE {srcnodelabel.lower()}.`{dstnodelabel.lower()}.{keyproperty.lower()}` = {dstnodelabel.lower()}.{keyproperty.lower()}"
+    createstring = f" CREATE ({srcnodelabel.lower()})-[:{edgelabel}]->({dstnodelabel.lower()})"
+    return edgequery+wherestring+createstring
 
 
 
@@ -97,16 +134,31 @@ def cypherOfTransformRelationshipsQuery(srcnodelabel, dstnodelabel, edgelabel, s
     return edgequery
 
 
-def cypherElementIDRelationshipQuery(parentlabel, childlabel, edgelabel, parentelementid, childemelentid):
+
+def cypherElementIDRelationshipQuery(parentlabel, childlabel, edgelabel, parentelementid, childelementid):
+    '''Returns a query that creates an edge based on element IDs
+    :param parentlabel: The name of the parent node
+    :type parentlabel: string
+    :param childlabel: The name of the child node derived from the partent label
+    :type childlable: string
+    :param edgelabel: A name for the edge
+    :type edgelabel: string
+    :param parentelementid: The element ID from neo4j for the parent node
+    :type parentelementid: string
+    :param childelementid: The element ID for the child node
+    :type childelementid: string
+    :return: A completed cypherquery that establishes an edge based on element IDs
+    :rtype: string '''
 
     edgequery = f"MATCH ({parentlabel.lower()}:{parentlabel.upper()}), ({childlabel.lower()}:{childlabel.upper()})"
-    wherestring = f" WHERE elementid({parentlabel.lower()}) = '{parentelementid}' AND elementid({childlabel.lower()}) = '{childemelentid}'"
+    wherestring = f" WHERE elementid({parentlabel.lower()}) = '{parentelementid}' AND elementid({childlabel.lower()}) = '{childelementid}'"
     createstring = f" CREATE ({parentlabel.lower()})-[:{edgelabel}]->({childlabel.lower()})"
     edgequery = edgequery+wherestring+createstring
     return edgequery
 
 
-def cypherUniqueLabels(dbconn, db='neo4j'):
+
+def cypherUniqueLabels(dbconn, modelname=None, modelversion=None, db='neo4j'):
     '''Returns a list of the labels/nodes found in the database
 
     :param dbconn: A database connection object
@@ -115,13 +167,19 @@ def cypherUniqueLabels(dbconn, db='neo4j'):
     :type db: string
     :return: A list of the lables found in the database
     :rtype: list of string'''
-
-    query = 'MATCH (n) RETURN distinct labels(n)'
+    if modelname is not None:
+        query = f"MATCH (n) WHERE n.modelhandle ='{modelname}' RETURN distinct labels(n)"
+    elif (modelname is not None) and (modelversion is not None):
+        query = f"MATCH (n) WHERE n.modelhandle ='{modelname}' AND n.modelversion = '{modelversion}' RETURN distinct labels(n)"
+    else:
+        query = 'MATCH (n) RETURN distinct labels(n)'
     res = dbconn.query(query=query, db=db)
     final = []
     for each in res:
         final.append(each.data()['labels(n)'][0])
     return final
+
+
 
 def cypherGetNodeQuery(node):
     '''Returns a query to get all instances of the node plus the elementIds in elid
@@ -133,6 +191,21 @@ def cypherGetNodeQuery(node):
 
     return f"MATCH ({node.lower()}:{node.upper()}) WITH *, elementID({node.lower()}) AS elid RETURN {node.lower()},elid"
 
+
+def cypherGetModelNodeQuery(node, modelhandle, modelversion):
+    '''Returns a query to get all instances of the node plus elementIds for a specific model and version
+    :param node: The name of the node to query
+    :type node: string
+    :param modelhandle: The handle of the data model
+    :type modelhandle: string
+    :param modelversion: The version of the data model
+    :type modelversion: string
+    :return: The query getting the model specific instances of the node
+    :rtype: string'''
+
+    return f"MATCH ({node.lower()}:{node.upper()}) WHERE {node.lower()}.modelhandle = '{modelhandle}' AND {node.lower()}.modelversion = '{modelversion}' WITH *, elementID({node.lower()}) AS elid RETURN {node.lower()},elid"
+
+
 def cypherGetBasicNodeQuery(node):
     '''Similar to cypherGetNodeQuery, this one queryies just on the label, elementID is not included
 
@@ -142,6 +215,8 @@ def cypherGetBasicNodeQuery(node):
     :rtype: string'''
 
     return f"MATCH ({node.lower()}:{node.upper()}) RETURN {node.lower()}"
+
+
 
 def cypherElementIDQuery(elementid):
     '''Returns a query that uses the node and elementId to find a specific node
@@ -155,6 +230,8 @@ def cypherElementIDQuery(elementid):
     '''
     return f"MATCH (s) WHERE elementId(s) = '{elementid}' RETURN s" 
 
+
+
 def cypherRecordCount(node):
     '''Returns a query for the number of  records for the provided node
 
@@ -164,6 +241,7 @@ def cypherRecordCount(node):
     :rtype: string'''
 
     return f"MATCH ({node.lower()}:{node.upper()}) RETURN COUNT(*) as count"
+
 
 
 def cypherSingleWhereQuery(node, field, value):
